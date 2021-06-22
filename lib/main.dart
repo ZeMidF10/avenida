@@ -13,7 +13,7 @@ class MyApp extends StatefulWidget {
 }
 
 class _MyAppState extends State<MyApp> {
-  String _defaultScannerOutput = '-1'; // Default value returned by the scanner plugin
+  final String _defaultScannerOutput = '-1'; // Default value returned by the scanner plugin
   String _scanBarcode = '';
 
   @override
@@ -23,27 +23,10 @@ class _MyAppState extends State<MyApp> {
   }
 
   Future<void> checkResultFromScanner(String barcodeScanRes) async {
-    String successOrFailure = '';
-    // TODO ..it should use the barcodeScanRes and correct endpoint to test if ticket/id is valid..for now dummy logic
-    if (DateTime.now().second % 2 == 0) {
-      successOrFailure = '200';
-    } else {
-      successOrFailure = '500';
-    }
-    var response = await http.get(Uri.parse('https://httpbin.org/status/' + successOrFailure));
-    if (response.statusCode == 200) {
-      // var jsonResponse = convert.jsonDecode(response.body) as Map<String, dynamic>;
-      // var itemCount = jsonResponse['totalItems'];
-      // TODO - treat logic here - for now dummy colour
-      setState(() {
-        _scanBarcode = successOrFailure;
-      });
-    } else {
-      // TODO - error communicating with server..or qr code is invalid - for now dummy colour
-      setState(() {
-        _scanBarcode = successOrFailure;
-      });
-    }
+    var response = await http.get(Uri.parse('http://85.234.139.82:8081/api/ticketValidate?id=' + barcodeScanRes));
+    setState(() {
+      _scanBarcode = response.statusCode.toString();
+    });
   }
 
   Future<void> scanBarcode() async {
@@ -53,7 +36,7 @@ class _MyAppState extends State<MyApp> {
       print(barcodeScanRes);
 
       if (barcodeScanRes != _defaultScannerOutput) {
-        await checkResultFromScanner(barcodeScanRes); // TODO ... this should be the ticket/ID to be sent to server later
+        await checkResultFromScanner(barcodeScanRes);
       } else {
         setState(() {
           _scanBarcode = barcodeScanRes;
@@ -61,6 +44,22 @@ class _MyAppState extends State<MyApp> {
       }
     } on PlatformException {
       barcodeScanRes = 'Failed to get platform version.';
+    }
+  }
+
+  Color? getCorrectColorFromHttpStatusCode(String statusCode) {
+    switch (statusCode) {
+      case '-1': // _defaultScannerOutput
+        return Colors.white;
+      case '200': // Success -> Valid ticked
+      case '201':
+        return Colors.green[200];
+      case '402': // Fail -> Ticked was not payed yet
+        return Colors.orange[200];
+      case '406': // Fail?? -> Ticked was already used one time
+        return Colors.yellow[200];
+      default: // Fail -> Ticked not found (also catchs any other exception)
+        return Colors.red[200];
     }
   }
 
